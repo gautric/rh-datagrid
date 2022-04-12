@@ -13,7 +13,9 @@
 		<version.spring.boot>2.5.4</version.spring.boot>
 		<version.spring.session>2.5.2</version.spring.session>
 		<version.micrometer.registry.prometheus>1.5.2</version.micrometer.registry.prometheus>
-	</properties>
+    <maven.compiler.target>11</maven.compiler.target>
+    <maven.compiler.source>11</maven.compiler.source>
+</properties>
 
 	<dependencyManagement>
 		<dependencies>
