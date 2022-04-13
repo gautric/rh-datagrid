@@ -30,6 +30,7 @@ public class Reader {
               this.remoteCacheManager.getCache(ProtobufMetadataManagerConstants.PROTOBUF_METADATA_CACHE_NAME);
       GeneratedSchema schema = new BasquesNamesSchemaBuilderImpl();
       metadataCache.put(schema.getProtoFileName(), schema.getProtoFile());
+      
    }
 
    @Scheduled(fixedDelay = 10000)
@@ -41,7 +42,8 @@ public class Reader {
    @Scheduled(fixedDelay = 1000)
    public void createOne() {
       int id = this.random.nextInt(Data.NAMES.size());
-      this.repository.create(Integer.toString(id), Data.NAMES.get(id));
+     // this.repository.create(Integer.toString(id), Data.NAMES.get(id));
+      remoteCacheManager.getCache(Data.BASQUE_NAMES_CACHE).put(Integer.toString(id), new BasqueName(""+id, Data.NAMES.get(id)));
    }
 
    @Scheduled(fixedDelay = 3000)
@@ -53,6 +55,8 @@ public class Reader {
    @Scheduled(fixedDelay = 1000)
    public void retrieveBasqueName() {
       int id = this.random.nextInt(Data.NAMES.size());
-      logger.info("FIND RESULT " + this.repository.findById(id));
+      logger.info("FIND RESULT " + remoteCacheManager.getCache(Data.BASQUE_NAMES_CACHE).get(Integer.toString(id)));
+    //  remoteCacheManager.getCache(Data.BASQUE_NAMES_CACHE).get(Integer.toString(id));
+
    }
 }
