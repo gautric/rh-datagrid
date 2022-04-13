@@ -132,7 +132,7 @@
 		</pluginManagement>
 	</build>
 
-	<profiles>
+	<!--profiles>
 		<profile>
 			<id>openshift</id>
 			<dependencyManagement>
@@ -173,6 +173,6 @@
 				</dependency>
 			</dependencies>
 		</profile>
-	</profiles>
+	</!--profiles-->
 
 </project>
