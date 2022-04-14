@@ -4,7 +4,7 @@
 	<groupId>org.infinispan.tutorial.simple</groupId>
 	<artifactId>infinispan-spring-boot-sample-remote</artifactId>
 	<version>1.0.0.CR3-redhat-00001</version>
-	<name>Infinispan Simple Tutorials: Spring Boot Remote</name>
+	<name>ISPN / DATA GRID : Spring Boot Remote</name>
 
 
 	<properties>

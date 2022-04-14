@@ -5,7 +5,7 @@
     <version>1.0.0.CR3-redhat-00001</version>
     <packaging>pom</packaging>
 
-    <name>Infinispan Tutorial: Simple tutorials</name>
+    <name>ISPN / DATA GRID Project</name>
 
     <properties>
        <version.infinispan>13.0.6.Final-redhat-00001</version.infinispan>

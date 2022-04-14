@@ -9,6 +9,8 @@
         <artifactId>infinispan-simple-tutorials</artifactId>
     </parent>
     
+    <name>ISPN / DATA GRID : Plain Java App Remote</name>
+    
     <build>
         <plugins>
             <plugin>
@@ -36,11 +38,6 @@
     </build>
 
     <dependencies>
-        <!-- <dependency>
-            <groupId>org.infinispan.tutorial.simple</groupId>
-            <artifactId>connect-to-infinispan-server</artifactId>
-            <version>${project.version}</version>
-        </dependency> -->
         <dependency>
             <groupId>org.infinispan</groupId>
             <artifactId>infinispan-client-hotrod</artifactId>
