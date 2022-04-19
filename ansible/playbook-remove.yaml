@@ -1,0 +1,30 @@
+# ansible-playbook playbook.yaml 
+---
+- name: Delete
+  hosts: localhost
+  
+  vars:
+    project_name: monproject
+    state: absent
+
+  tasks:
+  
+    - name: Get API server URL
+      k8s_info:
+        api_version: config.openshift.io/v1
+        kind: Infrastructure
+        name: cluster
+      register: r_api_url
+  
+    - name: Print API server URL
+      ansible.builtin.debug:
+        msg: apiServerURL {{ r_api_url.resources[0].status.apiServerURL }}
+      
+    - name: Delete namespace {{ project_name }}
+      kubernetes.core.k8s:
+        name: "{{ project_name }}"
+        api_version: v1
+        kind: Namespace
+        state: "{{ state }}"
+
+              
