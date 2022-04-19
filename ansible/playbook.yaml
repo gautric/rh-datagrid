@@ -5,7 +5,7 @@
   
   vars:
     project_name: monproject
-    datagrid_cluster_name: mydgcluster
+    datagrid_cluster_name: myispncluster
     datagrid_cluster_rep: 3
     state: present
     registry: image-registry.openshift-image-registry.svc:500
@@ -156,39 +156,36 @@
       set_fact:
         docker_image_reference: "{{ ist.resources[0].image.dockerImageReference }}"
 
-    - name: Create ConfigMap {{ project_name }}
-      kubernetes.core.k8s:
-        state: "{{ state }}"
-        definition:   
-          kind: ConfigMap
-          apiVersion: v1
-          metadata:
-            name: datagrid-sample-sb-app-cm
-            namespace: "{{ project_name }}"
-          data:
-            application.properties: |-
-              spring.application.name=datagrid-sample-sb-app
-
-              infinispan.remote.server-list={{ datagrid_cluster_name }}:11222
-
-              # near caching
-              infinispan.remote.near-cache-mode=INVALIDATED
-              infinispan.remote.near-cache-max-entries=100
-
-              # activates statistics for actuator
-              infinispan.remote.statistics=true
-              infinispan.remote.jmx=true
-
-              management.endpoints.web.exposure.include=*
-
-
-              infinispan.client.hotrod.use_auth=false
-
-              infinispan.remote.use-ssl=true
-              infinispan.remote.trust-store-file-name=/app/tls.crt
-              infinispan.remote.trust-store-type=PEM
-
-              infinispan.remote.sni-host-name={{ datagrid_cluster_name }}.{{ project_name }}.svc
+#    - name: Create ConfigMap {{ project_name }}
+#      kubernetes.core.k8s:
+#        state: "{{ state }}"
+#        definition:   
+#          kind: ConfigMap
+#          apiVersion: v1
+#          metadata:
+#            name: datagrid-sample-sb-app-cm
+#            namespace: "{{ project_name }}"
+#          data:
+#            application.properties: |-
+#              spring.application.name=sb-app-ispn
+#
+#              infinispan.remote.server-list=mydgcluster:11222
+#            
+#              # near caching
+#              infinispan.remote.near-cache-mode=INVALIDATED
+#              infinispan.remote.near-cache-max-entries=100
+#            
+#              # activates statistics for actuator
+#              infinispan.remote.statistics=true
+#              infinispan.remote.jmx=true
+#              management.endpoints.web.exposure.include=*
+#            
+#              infinispan.remote.use-auth=false
+#              infinispan.remote.use-ssl=true
+#              infinispan.remote.trust-store-file-name=/app/tls2.crt
+#              infinispan.remote.trust-store-type=PEM  
+#              infinispan.remote.trust-store-password=noPasswprd
+#              infinispan.remote.sni-host-name=mydgcluster.monprojet.svc
 
     - name: Create DeploymentConfig {{ project_name }}
       kubernetes.core.k8s:
@@ -226,7 +223,7 @@
                 containers:
                   - name: datagrid-sample-sb-app
                     image: >-
-                      {{ ist.resources[0].image.dockerImageReference }}
+                      {{ docker_image_reference }}
                     ports:
                     - containerPort: 8080
                       protocol: TCP
@@ -241,8 +238,11 @@
                     volumeMounts:
                     - mountPath: /app
                       name: encrypt-volume
+#                    - mountPath: /deployments/application.properties
+#                      subPath: application.properties
+#                      name: cm-volume
                 restartPolicy: Always
-                terminationGracePeriodSeconds: 30
+                terminationGracePeriodSeconds: 180
                 dnsPolicy: ClusterFirst
                 securityContext: {}
                 schedulerName: default-scheduler
@@ -251,3 +251,6 @@
                   secret:
                     defaultMode: 444
                     secretName: "{{ datagrid_cluster_name }}-cert-secret"
+#                - name: cm-volume
+#                  configMap:
+#                    name: datagrid-sample-sb-app-cm
