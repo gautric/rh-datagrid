@@ -1,0 +1,250 @@
+# ansible-playbook playbook.yaml 
+---
+- name: Ansible k8s module example
+  hosts: localhost
+  
+  vars:
+    project_name: monproject
+    datagrid_cluster_name: mydgcluster
+    datagrid_cluster_rep: 3
+    state: present
+    registry: image-registry.openshift-image-registry.svc:500
+    
+
+  tasks:
+  
+    - name: Get API server URL
+      k8s_info:
+        api_version: config.openshift.io/v1
+        kind: Infrastructure
+        name: cluster
+      register: r_api_url
+  
+    - name: Print API server URL
+      ansible.builtin.debug:
+        msg: apiServerURL {{ r_api_url.resources[0].status.apiServerURL }}
+  
+    - name: Create DG Operator
+      kubernetes.core.k8s:
+        state: "{{ state }}"
+        definition: 
+          apiVersion: operators.coreos.com/v1alpha1
+          kind: Subscription
+          metadata:
+            name: datagrid
+            namespace: openshift-operators
+          spec:
+            channel: 8.3.x
+            installPlanApproval: Automatic
+            name: datagrid
+            source: redhat-operators
+            sourceNamespace: openshift-marketplace
+            startingCSV: datagrid-operator.v8.3.3
+      
+    - name: Create namespace {{ project_name }}
+      kubernetes.core.k8s:
+        name: "{{ project_name }}"
+        api_version: v1
+        kind: Namespace
+        state: "{{ state }}"
+
+    - name: Create DG Cluster
+      kubernetes.core.k8s:
+        state: "{{ state }}"
+        definition:
+          apiVersion: infinispan.org/v1
+          kind: Infinispan
+          metadata:
+            name: "{{ datagrid_cluster_name }}"
+            namespace: "{{ project_name }}"
+            labels:
+              rht.comp: Data_Grid
+              rht.comp_ver: 8.3.0
+              rht.prod_name: Red_Hat_Runtimes
+              rht.prod_version: 2022-Q1
+              rht.subcomp_t: application
+              customer_app: cache
+          spec:
+            replicas: "{{ datagrid_cluster_rep }}"
+            service:
+              type: DataGrid
+            expose:
+              type: LoadBalancer
+
+              
+    - name: Create BuildConfig {{ project_name }}
+      kubernetes.core.k8s:
+        state: "{{ state }}"
+        wait: yes
+        definition:            
+          apiVersion: build.openshift.io/v1
+          kind: BuildConfig
+          metadata:
+            labels:
+              app: datagrid-sample-sb-app
+              app.kubernetes.io/component: datagrid-sample-sb-app
+              app.kubernetes.io/instance: datagrid-sample-sb-app
+              app.kubernetes.io/name: datagrid-sample-sb-app
+              app.kubernetes.io/part-of: redhat-datagrid-tutorials
+              app.openshift.io/runtime: java
+              app.openshift.io/runtime-version: openjdk-11-el7
+            name: datagrid-sample-sb-app
+            namespace: "{{ project_name }}"
+          spec:
+            failedBuildsHistoryLimit: 5
+            nodeSelector: null
+            output:
+              to:
+                kind: ImageStreamTag
+                name: datagrid-sample-sb-app:latest
+            postCommit: {}
+            resources: {}
+            runPolicy: Serial
+            source:
+              contextDir: cache-remote
+              git:
+                uri: https://github.com/gautric/rh-datagrid.git
+              type: Git
+            strategy:
+              sourceStrategy:
+                from:
+                  kind: ImageStreamTag
+                  name: java:openjdk-11-el7
+                  namespace: openshift
+              type: Source
+            successfulBuildsHistoryLimit: 5
+            triggers:
+            - imageChange: {}
+              type: ImageChange
+            - type: ConfigChange
+
+
+    - name: Create IS {{ project_name }}
+      kubernetes.core.k8s:
+        state: "{{ state }}"
+        definition:
+          apiVersion: image.openshift.io/v1
+          kind: ImageStream
+          metadata:
+            labels:
+              app: datagrid-sample-sb-app
+              app.kubernetes.io/component: datagrid-sample-sb-app
+              app.kubernetes.io/instance: datagrid-sample-sb-app
+              app.kubernetes.io/name: datagrid-sample-sb-app
+              app.kubernetes.io/part-of: redhat-datagrid-tutorials
+              app.openshift.io/runtime: java
+              app.openshift.io/runtime-version: openjdk-11-el7
+            name: datagrid-sample-sb-app
+            namespace: "{{ project_name }}"
+          spec:
+            lookupPolicy:
+              local: false
+
+    - name: Get IS
+      k8s_info:
+        api_version: image.openshift.io/v1
+        kind: ImageStreamTag
+        name: datagrid-sample-sb-app:latest
+        namespace: "{{ project_name }}"
+      register: ist
+
+    - name: Print dockerImageReference
+      ansible.builtin.debug:
+        msg: apiServerURL {{ ist.resources[0].image.dockerImageReference }}
+
+
+    - name: Create DeploymentConfig {{ project_name }}
+      kubernetes.core.k8s:
+        state: "{{ state }}"
+        definition:   
+          kind: ConfigMap
+          apiVersion: v1
+          metadata:
+            name: datagrid-sample-sb-app-cm
+            namespace: "{{ project_name }}"
+          data:
+            application.properties: |-
+              spring.application.name=datagrid-sample-sb-app
+
+              infinispan.remote.server-list={{ datagrid_cluster_name }}:11222
+
+              # near caching
+              infinispan.remote.near-cache-mode=INVALIDATED
+              infinispan.remote.near-cache-max-entries=100
+
+              # activates statistics for actuator
+              infinispan.remote.statistics=true
+              infinispan.remote.jmx=true
+
+              management.endpoints.web.exposure.include=*
+
+
+              infinispan.client.hotrod.use_auth=false
+
+              infinispan.remote.use-ssl=true
+              infinispan.remote.trust-store-file-name=/app/tls.crt
+              infinispan.remote.trust-store-type=PEM
+
+              infinispan.remote.sni-host-name={{ datagrid_cluster_name }}.{{ project_name }}.svc
+
+    - name: Create DeploymentConfig {{ project_name }}
+      kubernetes.core.k8s:
+        state: "{{ state }}"
+        definition:                       
+          kind: DeploymentConfig
+          apiVersion: apps.openshift.io/v1
+          metadata:
+            name: datagrid-sample-sb-app-dc
+            namespace: "{{ project_name }}"
+          spec:
+            strategy:
+              type: Rolling
+              rollingParams:
+                updatePeriodSeconds: 1
+                intervalSeconds: 1
+                timeoutSeconds: 600
+                maxUnavailable: 25%
+                maxSurge: 25%
+              resources: {}
+              activeDeadlineSeconds: 21600
+            triggers:
+              - type: ConfigChange
+            replicas: 1
+            revisionHistoryLimit: 10
+            test: false
+            selector:
+              app: datagrid-sample-sb-app
+            template:
+              metadata:
+                namespace: "{{ project_name }}"
+                labels:
+                  app: datagrid-sample-sb-app
+              spec:
+                containers:
+                  - name: datagrid-sample-sb-app
+                    image: >-
+                      {{ ist.resources[0].image.dockerImageReference }}
+                    ports:
+                    - containerPort: 8080
+                      protocol: TCP
+                    - containerPort: 8443
+                      protocol: TCP
+                    - containerPort: 8778
+                      protocol: TCP
+                    resources: {}
+                    terminationMessagePath: /dev/termination-log
+                    terminationMessagePolicy: File
+                    imagePullPolicy: Always
+                    volumeMounts:
+                    - mountPath: /app
+                      name: encrypt-volume
+                restartPolicy: Always
+                terminationGracePeriodSeconds: 30
+                dnsPolicy: ClusterFirst
+                securityContext: {}
+                schedulerName: default-scheduler
+                volumes:
+                - name: encrypt-volume
+                  secret:
+                    defaultMode: 444
+                    secretName: "{{ datagrid_cluster_name }}-cert-secret"
