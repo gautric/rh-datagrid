@@ -9,9 +9,9 @@
     - kubernetes.core
 
   vars:
-    project_name: our-project
-    application_name: datagrid-ex-sb-app
-    datagrid_cluster_name: dgexcluster
+    project_name: your-project
+    application_name: your-app
+    datagrid_cluster_name: your-dg-cluster
     datagrid_cluster_rep: 3
     state: present
     registry: image-registry.openshift-image-registry.svc:500
