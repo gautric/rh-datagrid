@@ -152,6 +152,9 @@
       ansible.builtin.debug:
         msg: apiServerURL {{ ist.resources[0].image.dockerImageReference }}
 
+    - name: Set dockerImageReference
+      set_fact:
+        docker_image_reference: "{{ ist.resources[0].image.dockerImageReference }}"
 
     - name: Create DeploymentConfig {{ project_name }}
       kubernetes.core.k8s:
