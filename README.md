@@ -16,7 +16,7 @@ Connect to our OCP instance :
     oc login --token=${API_TOKEN} --server=${OCP_INSTANCE_URL_PORT}
     
     
-Got to ansible playbook directory
+Go to ansible playbook directory
 
     cd ansible
     
@@ -35,7 +35,7 @@ Execute ansible command
 
 ### Implementation
 
-This ansible playbook (simple and stuipd) creates several K8S objects :
+This ansible playbook (simple and stupid) creates several K8S objects in addition of the RHDG Operator :
 
 * Namespace / project
 * RHdatagrid cluster
@@ -44,7 +44,7 @@ This ansible playbook (simple and stuipd) creates several K8S objects :
 * ConfigMap
 * DeploymentConfig
 
-DeploymentConfig injects the RHDG certificat into pod for secure connection.
+DeploymentConfig injects the RHDG certificate into pod for secure connection.
   
 
 ## Links 
