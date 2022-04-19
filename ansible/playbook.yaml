@@ -2,15 +2,20 @@
 ---
 - name: Ansible k8s module example
   hosts: localhost
-  
+  gather_facts: false
+  connection: local
+
+  collections:
+    - kubernetes.core
+
   vars:
-    project_name: dgsampleproject
-    datagrid_cluster_name: dgsamplecluster
+    project_name: our-project
+    application_name: datagrid-ex-sb-app
+    datagrid_cluster_name: dgexcluster
     datagrid_cluster_rep: 3
     state: present
     registry: image-registry.openshift-image-registry.svc:500
     
-
   tasks:
   
     - name: Get API server URL
@@ -58,6 +63,8 @@
             name: "{{ datagrid_cluster_name }}"
             namespace: "{{ project_name }}"
             labels:
+              app:  "{{ application_name }}"
+              app.kubernetes.io/component:  "{{ application_name }}"
               rht.comp: Data_Grid
               rht.comp_ver: 8.3.0
               rht.prod_name: Red_Hat_Runtimes
@@ -83,14 +90,13 @@
           kind: BuildConfig
           metadata:
             labels:
-              app: datagrid-sample-sb-app
-              app.kubernetes.io/component: datagrid-sample-sb-app
-              app.kubernetes.io/instance: datagrid-sample-sb-app
-              app.kubernetes.io/name: datagrid-sample-sb-app
-              app.kubernetes.io/part-of: redhat-datagrid-tutorials
+              app:  "{{ application_name }}"
+              app.kubernetes.io/component:  "{{ application_name }}"
+              app.kubernetes.io/instance:  "{{ application_name }}"
+              app.kubernetes.io/name:  "{{ application_name }}"
               app.openshift.io/runtime: java
               app.openshift.io/runtime-version: openjdk-11-el7
-            name: datagrid-sample-sb-app
+            name:  "{{ application_name }}"
             namespace: "{{ project_name }}"
           spec:
             failedBuildsHistoryLimit: 5
@@ -98,7 +104,7 @@
             output:
               to:
                 kind: ImageStreamTag
-                name: datagrid-sample-sb-app:latest
+                name:  "{{ application_name }}:latest"
             postCommit: {}
             resources: {}
             runPolicy: Serial
@@ -129,14 +135,14 @@
           kind: ImageStream
           metadata:
             labels:
-              app: datagrid-sample-sb-app
-              app.kubernetes.io/component: datagrid-sample-sb-app
-              app.kubernetes.io/instance: datagrid-sample-sb-app
-              app.kubernetes.io/name: datagrid-sample-sb-app
+              app:  "{{ application_name }}"
+              app.kubernetes.io/component:  "{{ application_name }}"
+              app.kubernetes.io/instance:  "{{ application_name }}"
+              app.kubernetes.io/name:  "{{ application_name }}"
               app.kubernetes.io/part-of: redhat-datagrid-tutorials
               app.openshift.io/runtime: java
               app.openshift.io/runtime-version: openjdk-11-el7
-            name: datagrid-sample-sb-app
+            name:  "{{ application_name }}"
             namespace: "{{ project_name }}"
           spec:
             lookupPolicy:
@@ -146,17 +152,17 @@
       k8s_info:
         api_version: image.openshift.io/v1
         kind: ImageStreamTag
-        name: datagrid-sample-sb-app:latest
+        name:  "{{ application_name }}:latest"
         namespace: "{{ project_name }}"
       register: ist
 
-    - name: Print dockerImageReference
-      ansible.builtin.debug:
-        msg: apiServerURL {{ ist.resources[0].image.dockerImageReference }}
+    # - name: Print dockerImageReference
+    #   ansible.builtin.debug:
+    #     msg: apiServerURL {{ ist.resources[0].image.dockerImageReference }}
 
-    - name: Set dockerImageReference
-      set_fact:
-        docker_image_reference: "{{ ist.resources[0].image.dockerImageReference }}"
+    # - name: Set dockerImageReference
+    #   set_fact:
+    #     docker_image_reference: "{{ ist.resources[0].image.dockerImageReference }}"
 
     - name: Create ConfigMap {{ project_name }}
       kubernetes.core.k8s:
@@ -165,8 +171,10 @@
           kind: ConfigMap
           apiVersion: v1
           metadata:
-            name: datagrid-sample-sb-app-cm
+            name:  "{{ application_name }}-cm"
             namespace: "{{ project_name }}"
+            labels:
+              app:  "{{ application_name }}"
           data:
             application.properties: |-
               spring.application.name=sb-app-ispn
@@ -199,8 +207,10 @@
           kind: DeploymentConfig
           apiVersion: apps.openshift.io/v1
           metadata:
-            name: datagrid-sample-sb-app-dc
+            name:  "{{ application_name }}-dc"
             namespace: "{{ project_name }}"
+            labels:
+              app:  "{{ application_name }}"
           spec:
             strategy:
               type: Rolling
@@ -218,17 +228,17 @@
             revisionHistoryLimit: 10
             test: false
             selector:
-              app: datagrid-sample-sb-app
+              app:  "{{ application_name }}"
             template:
               metadata:
                 namespace: "{{ project_name }}"
                 labels:
-                  app: datagrid-sample-sb-app
+                  app:  "{{ application_name }}"
               spec:
                 containers:
-                  - name: datagrid-sample-sb-app
+                  - name:  "{{ application_name }}"
                     image: >-
-                      {{ docker_image_reference }}
+                      image-registry.openshift-image-registry.svc:5000/{{ project_name }}/{{ application_name }}:latest
                     ports:
                     - containerPort: 8080
                       protocol: TCP
@@ -258,4 +268,4 @@
                     secretName: "{{ datagrid_cluster_name }}-cert-secret"
                 - name: cm-volume
                   configMap:
-                    name: datagrid-sample-sb-app-cm
+                    name:  "{{ application_name }}-cm"
