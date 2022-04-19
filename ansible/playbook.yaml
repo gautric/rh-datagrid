@@ -156,7 +156,7 @@
       set_fact:
         docker_image_reference: "{{ ist.resources[0].image.dockerImageReference }}"
 
-    - name: Create DeploymentConfig {{ project_name }}
+    - name: Create ConfigMap {{ project_name }}
       kubernetes.core.k8s:
         state: "{{ state }}"
         definition:   
